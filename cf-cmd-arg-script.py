@@ -20,7 +20,7 @@ def stopBastion():
     bastion = getInstance(bastion_list[0], conn, instances)
 
     if bastion is not None:
-        print("stopping bastion server...")
+        print ("stopping bastion server...")
         bastion.stop()
 
         while bastion.state != 'stopped':
@@ -28,7 +28,27 @@ def stopBastion():
             bastion.update()
             print ("Bastion state: %s" % (bastion.state))
     else:
-        print("bastion not found")
+        print ("bastion not found")
+
+    return None;
+
+def startBastion():
+    "Starts the bastion and is called after all other instances are running."
+
+    bastion = getInstance(bsation_list[0], conn, instances)
+    bastion_status = conn.get_all_instance_status()
+
+    if bastion is not None:
+        print ("starting instance: %s in deployment: %s " % (bastion_list[0]['Name'], bastion_list[0]['Deployment']))
+        bastion.start()
+
+        while (bastion.state != 'running') or (bastion_status[0].system_status.details["reachability"] != 'passed') or (bastion_status[0].system_status.details["reachability"] != 'passed'):
+            time.sleep(10)
+            bastion.update()
+            print ("Instance: %s State: %s " % (bastion_list[0]["Name"], bastion.state))
+            print ("System Status Check: %s Instance Status Check: %s " % (bastion_status[0].system_status.details["reachability"], bastion_status[0].instance_status.details["reachability"]))
+    else:
+        print ("Instance: %s not found" % (bastion_list[0])")
 
     return None;
 
@@ -38,7 +58,7 @@ def stopOtherInstances():
     for i in instance_list:
         inst = getInstance(instance_list[i], conn, instances)
         if inst is not None:
-            print("stopping instance: %s in deployment: %s " % (instance_list[i]['Name'], instance_list[i]['Deployment']))
+            print ("stopping instance: %s in deployment: %s " % (instance_list[i]['Name'], instance_list[i]['Deployment']))
             inst.stop()
 
             while inst.state != 'stopped':
