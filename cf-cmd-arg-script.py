@@ -207,7 +207,7 @@ if args.stop:
     print("\nAll instances have now been stopped. \nYour CF environment has been safely shutdown!")
 
 elif args.start:
-    if serversAreUp():
+    if serversAreDown():
         print("\nstarting instances ... \n")
         startInstances(instance_list)
         print("\nYour CF environment is now up!")
