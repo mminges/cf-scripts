@@ -1,2 +1,4 @@
-0|test-2|fungus-test-1
-1|test-2|fungus-test-2
+0|test-2|fungus-test-1|stop-pause
+1|test-3|fungus-test-2|
+2|test-2|fungus-test-2|start-pause
+3|test|fungus-test-1|both
