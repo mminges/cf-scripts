@@ -3,6 +3,8 @@ import sys
 import time
 import collections
 import copy
+import os.path
+import argparse
 
 def getInstance(info, conn, instances):
     "Retrieves the ECS Instance matching this info!"
@@ -59,6 +61,24 @@ def serverIsUp(svr_inst):
 
     return result
 
+def serversAreUp():
+    "Will check to see whether all servers in the list are in a running state"
+    result = True
+
+    for i in instance_list:
+        inst = getInstance(instance_list[i], conn, instances)
+
+        if inst is not None:
+            inst.update()
+            if(inst.state == 'running'):
+                result = False
+                break
+        else:
+            result = False
+            break
+
+    return result
+
 def serverIsDown(svr_inst):
     "Will check whether the current server in the list is in a shut down state"
     result = True
@@ -71,6 +91,26 @@ def serverIsDown(svr_inst):
         result = False
 
     return result
+
+def serversAreDown():
+    "Will check to see whether all servers in the list are in a shutdown state"
+    result = True
+
+    for i in reversed(instance_list):
+        inst = getInstance(instance_list[i], conn, instances)
+
+        if inst is not None:
+            inst.update()
+            if(inst.state == 'stopped'):
+                result = False
+                break
+        else:
+            result = False
+            break
+
+    return result
+
+
 
 def stopInstances(instance_list):
     "Stops all the instances in reverse order of the list provided."
@@ -121,7 +161,7 @@ def startInstances(instance_list):
                 count += 1
 
                 if shouldPause and shouldPause == 'start-pause' or shouldPause == 'both':
-                    print("Will wait until the instance is running and both system and instance status checks have passed!")
+                    print("Waiting for %s to move into state [running] and for status checks to pass!" % nm)
                     while not serverIsUp(inst):
                         time.sleep(2)
                         print('.',end="",flush=True)
@@ -144,34 +184,33 @@ with open('./otherInstances.txt', 'r') as file:
 instance_list = collections.OrderedDict(sorted(otherInstances.items()))
 
 # Create a connection to the service
-conn = boto.ec2.connect_to_region("us-west-2")
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--start', action='store_true', help='start the specified instances')
+parser.add_argument('--stop', action='store_true', help='stop the specified instances')
+parser.add_argument('--status', action='store_true', help='status for the specified instances')
+
+parser.add_argument('-r','--region', help='connect to the specified region', default='us-west-2')
+parser.add_argument('filename', help='Name of file containing instance details')
+
+args = parser.parse_args()
+
+print("Connecting to AWS Region [%s]" % args.region)
+conn = boto.ec2.connect_to_region(args.region)
 instances = conn.get_only_instances()
 
-USAGE = "Usage: %s (start|stop|status|region)" % sys.argv[0]
-try:
-    cmdarg = sys.argv[1]
-    if cmdarg not in ['start','stop','status','region']:
-        print("Unknown arg: %s" % cmdarg)
-        print(USAGE)
-        sys.exit(1)
-except IndexError:
-    print("Missing option(s)")
-    print(USAGE)
-    sys.exit(1)
-
-if cmdarg == ('stop'):
+if args.stop:
     print("\nstopping instances ... \n")
     stopInstances(instance_list)
     print("\nAll instances have now been stopped. \nYour CF environment has been safely shutdown!")
 
-
-if cmdarg == ('start'):
-    print("\nstarting instances ... \n")
-    startInstances(instance_list)
-    print("\nYour CF environment is now up!")
-
-if cmdarg == ('status'):
+elif args.start:
+    if serversAreUp():
+        print("\nstarting instances ... \n")
+        startInstances(instance_list)
+        print("\nYour CF environment is now up!")
+    else:
+        print("Not all servers are in a known stopped state. Please check AWS Console")
+else:
     getStatusForInstances()
-
-if cmdarg == ('region'):
-    print("not finished yet...")
