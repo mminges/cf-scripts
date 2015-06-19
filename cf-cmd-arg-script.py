@@ -187,9 +187,10 @@ instance_list = collections.OrderedDict(sorted(otherInstances.items()))
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--start', action='store_true', help='start the specified instances')
-parser.add_argument('--stop', action='store_true', help='stop the specified instances')
-parser.add_argument('--status', action='store_true', help='status for the specified instances')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('--start', action='store_true', help='start the specified instances')
+group.add_argument('--stop', action='store_true', help='stop the specified instances')
+group.add_argument('--status', action='store_true', help='status for the specified instances')
 
 parser.add_argument('-r','--region', help='connect to the specified region', default='us-west-2')
 parser.add_argument('filename', help='Name of file containing instance details')
