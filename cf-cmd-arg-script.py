@@ -176,15 +176,12 @@ def startInstances(instance_list):
     return None;
 
 otherInstances = dict()
-with open('./otherInstances.txt', 'r') as file:
+with open('./cfInstances.txt', 'r') as file:
     for line in file:
         nd = line.split('|')
-        otherInstances[nd[0]] = {'Name': nd[1], 'Deployment': nd[2], 'ShouldPause' : nd[3].replace('\n','')}
+        otherInstances[nd[0]] = {'idx': nd[0], 'Name': nd[1], 'Deployment': nd[2], 'ShouldPause' : nd[3].replace('\n','')}
 
-instance_list = collections.OrderedDict(sorted(otherInstances.items()))
-
-# Create a connection to the service
-
+instance_list = collections.OrderedDict(sorted(otherInstances.items(), key=lambda i: int(i[1]['idx'])))
 
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
@@ -198,6 +195,7 @@ parser.add_argument('filename', help='Name of file containing instance details')
 args = parser.parse_args()
 
 print("Connecting to AWS Region [%s]" % args.region)
+# Create a connection to the service
 conn = boto.ec2.connect_to_region(args.region)
 instances = conn.get_only_instances()
 

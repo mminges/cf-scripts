@@ -1,0 +1,14 @@
+0|api/0|cf-aws-tiny|stop-pause
+1|data/0|cf-aws-tiny|
+2|runner_z1/0|cf-aws-tiny|
+3|haproxy/0|cf-aws-tiny|
+4|services/0|cf-aws-tiny|
+5|health/0|cf-aws-tiny|start-pause
+6|api/0|logsearch-aws-vpc|
+7|queue/0|logsearch-aws-vpc|
+8|ingestor/0|logsearch-aws-vpc|
+9|log_parser/0|logsearch-aws-vpc|
+10|elasticsearch_persistent/0|logsearch-aws-vpc|start-pause
+11|nat|cf-aws-tiny|
+12|bosh-vpc-7f75f61a|cf-aws-tiny|start-pause
+13|bastion|cf-aws-tiny|both
