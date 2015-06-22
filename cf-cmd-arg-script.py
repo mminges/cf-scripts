@@ -13,8 +13,8 @@ def getInstance(info, conn, instances):
         if 'deployment' in i.tags and 'Name' in i.tags:
             dep = i.tags['deployment']
             name = i.tags['Name']
-        if name == info['Name'] and dep == info['Deployment']:
-            return i;
+            if name == info['Name'] and dep == info['Deployment']:
+                return i;
 
     return None;
 
@@ -70,7 +70,7 @@ def serversAreUp():
 
         if inst is not None:
             inst.update()
-            if(inst.state == 'running'):
+            if(inst.state != 'running'):
                 result = False
                 break
         else:
@@ -96,21 +96,25 @@ def serversAreDown():
     "Will check to see whether all servers in the list are in a shutdown state"
     result = True
 
-    for i in reversed(instance_list):
+    cnt = 0
+
+    for i in instance_list:
         inst = getInstance(instance_list[i], conn, instances)
 
         if inst is not None:
             inst.update()
             if(inst.state == 'stopped'):
-                result = False
-                break
+                result = result and True
         else:
+            print("Instance %s is in state[%s]. Not starting instances!" % (inst.id,inst.state))
             result = False
-            break
+        cnt +=1
+
+    if cnt == 0:
+        print("No Instances to test! Check your instance list!")
+        result = False
 
     return result
-
-
 
 def stopInstances(instance_list):
     "Stops all the instances in reverse order of the list provided."
@@ -175,14 +179,6 @@ def startInstances(instance_list):
     print("\n[%d] servers started" % count)
     return None;
 
-otherInstances = dict()
-with open('./cfInstances.txt', 'r') as file:
-    for line in file:
-        nd = line.split('|')
-        otherInstances[nd[0]] = {'idx': nd[0], 'Name': nd[1], 'Deployment': nd[2], 'ShouldPause' : nd[3].replace('\n','')}
-
-instance_list = collections.OrderedDict(sorted(otherInstances.items(), key=lambda i: int(i[1]['idx'])))
-
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--start', action='store_true', help='start the specified instances')
@@ -198,6 +194,14 @@ print("Connecting to AWS Region [%s]" % args.region)
 # Create a connection to the service
 conn = boto.ec2.connect_to_region(args.region)
 instances = conn.get_only_instances()
+
+otherInstances = dict()
+with open(args.filename, 'r') as file:
+    for line in file:
+        nd = line.split('|')
+        otherInstances[nd[0]] = {'idx': nd[0], 'Name': nd[1], 'Deployment': nd[2], 'ShouldPause' : nd[3].replace('\n','')}
+
+instance_list = collections.OrderedDict(sorted(otherInstances.items(), key=lambda i: int(i[1]['idx'])))
 
 if args.stop:
     print("\nstopping instances ... \n")
