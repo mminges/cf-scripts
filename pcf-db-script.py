@@ -1,11 +1,16 @@
 import boto.rds
+import boto.ec2
 import datetime
 import time
 import argparse
 from datetime import date, timedelta
 
 def getStatusOfDatabase():
-    return None
+    if dbInstances is not None:
+        # dbInstances.update(validate=True)
+        print("This database has status of %s " % (dbInstances.status))
+    else:
+        print("There is currently no available RDS database running. Please check the AWS Console if this is a problem!")
 
 def removeDatabase():
     today = datetime.date.today()
@@ -92,7 +97,7 @@ elif args.restore:
 elif args.list_snap:
     print("\nListing all snapshots associated with [%s] ... " % (dbInstanceName))
     for i in dbSnapshots:
-        print("\n%s " % (i))
+        print("\n%s has status of [%s] " % (i, i.status))
 
 else:
     getStatusOfDatabase()
