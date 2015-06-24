@@ -18,7 +18,7 @@ def removeDatabase():
     latestSnapshotName = dbInstanceName + '-' + prevSnapshotName_str
     print("\nThe latest snapshot taken is: \n%s " % latestSnapshotName)
 
-    # print("Database instances that are active are: %s " % (dbInstances))
+    print("\nDatabase instances that are active are: %s " % (dbInstances))
 
     # deletedInstance = dbInstances[0].stop(skip_final_snapshot = False, final_snapshot_id = snapshotName)
     #
@@ -37,6 +37,27 @@ def removeDatabase():
     return None
 
 def restoreDatabase():
+    dbSnapshotName = dbInstanceName + '-' + '7640aaf11164460db8e643a5226e5770'
+    dbClassName = 'db.m3.large'
+    secGroupId = 'sg-86020ce2'
+    secGroupName = 'tc-mysql'
+    # restoredInstance = conn.restore_dbinstance_from_dbsnapshot(dbSnapshotName, dbInstanceName, dbClassName, multi_az=True, db_subnet_group_name='tc-pcf-rdsgroup')
+    #
+    # iterationCount = 0
+    # timerBreak = 30
+    # restoredStatus = 'restoring'
+    #
+    # while ((iterationCount < 60) and (restoredStatus != 'available')):
+    #    time.sleep(timerBreak)
+    #    try:
+    #       restoredInstance.update(validate=True)
+    #       restoredStatus = restoredInstance.status
+    #       print ("restored db status:  " + restoredStatus)
+    #    except ValueError:
+    #       print("could no longer access database status, exiting")
+
+
+    # conn.modify_dbinstance(dbInstanceName, vpc_security_groups=[secGroupId]);
     return None
 
 parser = argparse.ArgumentParser()
@@ -52,7 +73,7 @@ args = parser.parse_args()
 
 dbInstanceName = 'tc-pcf-bosh'
 
-print("Connecting to AWS Region [%s]" % args.region)
+print("Connecting to AWS Region [%s] " % args.region)
 # Create a connection to the service
 conn = boto.rds.connect_to_region(args.region)
 dbInstances = conn.get_all_dbinstances(dbInstanceName)
