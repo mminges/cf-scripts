@@ -7,21 +7,17 @@ from datetime import date, timedelta
 
 def getStatusOfDatabase():
     if dbInstances is not None:
-        # dbInstances.update(validate=True)
         print("This database has status of %s " % (dbInstances.status))
+
     else:
         print("There is currently no available RDS database running. Please check the AWS Console if this is a problem!")
+    return None;
 
 def removeDatabase():
-    today = datetime.date.today()
+    snapshotName = dbInstanceName + '-' + today.strftime('%Y%m%d-%H:%M:%S')
+    print("Before removing database, will create a snapshot under the following name: \n%s " % snapshotName)
 
-    snapshotName = dbInstanceName + '-' + today.strftime('%Y%m%d')
-    print("Before removing database, will create a snapshot under the followin name: \n%s " % snapshotName)
 
-    prevSnapshotName = datetime.datetime.now() - datetime.timedelta(days=1)
-    prevSnapshotName_str = prevSnapshotName.strftime('%Y%m%d')
-    latestSnapshotName = dbInstanceName + '-' + prevSnapshotName_str
-    print("\nThe latest snapshot taken is: \n%s " % latestSnapshotName)
 
     print("\nDatabase instances that are active are: %s " % (dbInstances))
 
@@ -42,6 +38,11 @@ def removeDatabase():
     return None
 
 def restoreDatabase():
+    prevSnapshotName = today - datetime.timedelta(days=1)
+    prevSnapshotName_str = prevSnapshotName.strftime('%Y%m%d-%H:%M:%S')
+    latestSnapshotName = dbInstanceName + '-' + prevSnapshotName_str
+    print("\nThe latest snapshot taken is: \n%s " % latestSnapshotName)
+
     dbSnapshotName = dbInstanceName + '-' + '7640aaf11164460db8e643a5226e5770'
     dbClassName = 'db.m3.large'
     secGroupId = 'sg-86020ce2'
@@ -69,19 +70,21 @@ parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--remove', action='store_true', help='takes a snapshot and removes the specified database instance')
 group.add_argument('--restore', action='store_true', help='restore the database from the latest snaphot taken')
-group.add_argument('--status', action='store_true', help='status for the specified database')
+group.add_argument('--status', action='store_true', help='status for the specified database snapshot')
 group.add_argument('--list_snap', action='store_true', help='lists all available snapshots for the specified database instance')
 
 parser.add_argument('-r','--region', help='connect to the specified region', default='us-east-1')
+parser.add_argument('-o','--override', help='allows user to specify snapshot to use for a database restore')
 
 args = parser.parse_args()
 
 dbInstanceName = 'tc-pcf-bosh'
+today = datetime.datetime.now()
 
 print("Connecting to AWS Region [%s] " % args.region)
 # Create a connection to the service
 conn = boto.rds.connect_to_region(args.region)
-dbInstances = conn.get_all_dbinstances(dbInstanceName)
+dbInstances = conn.get_all_dbinstances()
 dbSnapshots = conn.get_all_dbsnapshots(instance_id=dbInstanceName)
 
 if args.remove:
@@ -96,8 +99,8 @@ elif args.restore:
 
 elif args.list_snap:
     print("\nListing all snapshots associated with [%s] ... " % (dbInstanceName))
-    for i in dbSnapshots:
-        print("\n%s has status of [%s] " % (i, i.status))
+    for snapshot in dbSnapshots:
+        print("\n%s has status of [%s] " % (snapshot, snapshot.status))
 
 else:
     getStatusOfDatabase()
