@@ -18,7 +18,7 @@ def getSnapshots():
     for name in snapshotList:
         print("\n%s " % (name))
 
-    return snapshotList;
+    return snapshotList
 
 def getStatusOfDatabase():
     if dbInstances is not None:
@@ -26,7 +26,7 @@ def getStatusOfDatabase():
 
     else:
         print("There is currently no available RDS database running. Please check the AWS Console if this is a problem!")
-    return None;
+    return None
 
 def removeDatabase():
     snapshotName = dbSnapshotBase + '-' + today.strftime('%Y%m%d-%H%M')
@@ -54,38 +54,35 @@ def removeDatabase():
 
 def restoreDatabase():
 
-    snapshotList = []
-    for snapshot in dbSnapshots:
-        if snapshot.id.startswith('tc-pcf-bosh-snapshot') and snapshot.status == 'available':
-            snapshotList.append(snapshot.id)
-    snapshotList.sort(reverse=True)
-
-    if snapshotList is not None:
-        print("The most recent available snapshot is %s " % snapshotList[0])
-    else:
+    snapshots = getSnapshots()
+    if snapshotList is None:
         print("There are no snapshots to restore from")
+        return
 
-    dbSnapshotName = dbSnapshotBase + '-' + '7640aaf11164460db8e643a5226e5770'
+    print("Will restore database from the most recent available snapshot: [%s] " % dbSnapshotName)
+
+    dbSnapshotName = snapshots[0]
     dbClassName = 'db.m3.large'
     secGroupId = 'sg-86020ce2'
     secGroupName = 'tc-mysql'
-    # restoredInstance = conn.restore_dbinstance_from_dbsnapshot(dbSnapshotName, dbInstanceName, dbClassName, multi_az=True, db_subnet_group_name='tc-pcf-rdsgroup')
-    #
-    # iterationCount = 0
-    # timerBreak = 30
-    # restoredStatus = 'restoring'
-    #
-    # while ((iterationCount < 60) and (restoredStatus != 'available')):
-    #    time.sleep(timerBreak)
-    #    try:
-    #       restoredInstance.update(validate=True)
-    #       restoredStatus = restoredInstance.status
-    #       print ("restored db status:  " + restoredStatus)
-    #    except ValueError:
-    #       print("could no longer access database status, exiting")
+    restoredInstance = conn.restore_dbinstance_from_dbsnapshot(dbSnapshotName, dbInstanceName, dbClassName, multi_az=True, db_subnet_group_name='tc-pcf-rdsgroup')
+
+    iterationCount = 0
+    timerBreak = 30
+    restoredStatus = 'restoring'
+
+    while ((iterationCount < 60) and (restoredStatus != 'available')):
+       time.sleep(timerBreak)
+       try:
+          restoredInstance.update(validate=True)
+          restoredStatus = restoredInstance.status
+          print ("restored db status:  " + restoredStatus)
+       except ValueError:
+          print("could no longer access database status, exiting")
 
 
-    # conn.modify_dbinstance(dbInstanceName, vpc_security_groups=[secGroupId]);
+    conn.modify_dbinstance(dbInstanceName, vpc_security_groups=[secGroupId]);
+
     return None
 
 parser = argparse.ArgumentParser()
