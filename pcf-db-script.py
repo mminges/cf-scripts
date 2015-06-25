@@ -5,6 +5,7 @@ import time
 import argparse
 import collections
 from datetime import date, timedelta
+from boto.exception import BotoServerError
 
 def getSnapshots():
     "Lists all snapshots that were created using this script"
@@ -16,7 +17,7 @@ def getSnapshots():
             snapshotList.append(snapshot.id)
     snapshotList.sort(reverse=True)
     for name in snapshotList:
-        print("\n%s " % (name))
+        print("%s " % (name))
 
     return snapshotList;
 
@@ -28,27 +29,32 @@ def getStatusOfDatabase():
         print("There is currently no available RDS database running. Please check the AWS Console if this is a problem!")
     return None;
 
+
 def removeDatabase():
     snapshotName = dbSnapshotBase + '-' + today.strftime('%Y%m%d-%H%M')
-    print("Before removing database, will create a snapshot under the following name: \n%s " % snapshotName)
+    print("Backing database up to snapshot name: \n%s " % snapshotName)
 
+    deletedInstance = dbInstances[0].stop(skip_final_snapshot=False, final_snapshot_id=snapshotName)
 
+    iterationCount = 0
+    timerBreak = 30
 
-    print("\nDatabase instances that are active are: %s " % (dbInstances))
-
-    # deletedInstance = dbInstances[0].stop(skip_final_snapshot = False, final_snapshot_id = snapshotName)
-    #
-    # iterationCount = 0
-    # timerBreak = 30
-    #
-    # while (iterationCount < 40):
-    #    time.sleep(timerBreak)
-    #    print('.',end="",flush=True)
-    #    try:
-    #       deletedInstance.update(validate=True)
-    #       print ("deletion status:  " + deletedInstance.status)
-    #    except ValueError:
-    #       print("could no longer access database status, assuming it has been deleted")
+    print("Snapshot created...\nDeleting database..." + dbInstanceName)
+    while (iterationCount < 40):
+        time.sleep(timerBreak)
+        print('.', end="", flush=True)
+        try:
+            deletedInstance.update(validate=True)
+        except ValueError:
+            print("could no longer access database status, assuming it has been deleted")
+        except BotoServerError as e:
+            print('botoServerError')
+            print('status=', e.status)
+            print('reason=', e.reason)
+            print('body=', e.body)
+            print('request_id=', e.request_id)
+            print('error_code=', e.error_code)
+            print('error_message=', e.error_message)
 
     return None
 
