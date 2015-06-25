@@ -21,6 +21,8 @@ def getSnapshots():
     return snapshotList
 
 def getStatusOfDatabase():
+    "Gets the status of the specified available database"
+
     if dbInstances is not None:
         print("This database has status of %s " % (dbInstances.status))
 
@@ -43,10 +45,9 @@ def removeDatabase():
     #
     # while (iterationCount < 40):
     #    time.sleep(timerBreak)
-    #    print('.',end="",flush=True)
     #    try:
     #       deletedInstance.update(validate=True)
-    #       print ("deletion status:  " + deletedInstance.status)
+    #       print ("deletion status: " + deletedInstance.status)
     #    except ValueError:
     #       print("could no longer access database status, assuming it has been deleted")
 
