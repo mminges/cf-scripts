@@ -3,7 +3,6 @@ import boto.ec2
 import datetime
 import time
 import argparse
-import collections
 from datetime import date, timedelta
 
 def getSnapshots():
