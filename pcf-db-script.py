@@ -1,9 +1,9 @@
 import boto.rds
-import boto.rds2
 import boto.ec2
 import datetime
 import time
 import argparse
+import collections
 from datetime import date, timedelta
 from boto.exception import BotoServerError
 
@@ -26,27 +26,13 @@ def printSnapshots():
     for name in snapshots:
         print(name)
 
-    return None
-
-def deleteOldSnapshots():
-    "Deletes snapshots from the end of the list of snapshots if greater than 10."
-    allSnapshots = getSnapshots()
-    if (len(allSnapshots) > 5):
-        print("The last snapshot in the list is %s and will be deleted first." % (allSnapshots[-1]))
-    else:
-        print("False")
-
-    print("not finished yet ...")
-
+    return snapshots
 
 def getStatusOfDatabase():
     "Gets the status of the specified available database"
 
     if dbInstances is not None:
-        db = dbInstances[0]
-        print("\n%s database has status of [%s] " % (db.id, db.status))
-        print("\nInstance Class: %s \nAvailability Zone: %s \nVPC Security Groups: %s \nCreation Time: %s " % (db.instance_class, db.availability_zone, db.vpc_security_groups, db.create_time))
-
+        print("[%s] has status of [%s] " % (dbInstances[0], dbInstances[0].status))
     else:
         print("There is currently no available RDS database running. Please check the AWS Console if this is a problem!")
 
@@ -61,8 +47,6 @@ def removeDatabase():
     iterationCount = 0
     iterationMax = 40
     timerBreak = 30
-
-    print("\nDatabase instances that are active are: %s " % (dbInstances))
 
     print("Deleting database..." + dbInstanceName)
     while (iterationCount < iterationMax):
@@ -120,20 +104,34 @@ def restoreDatabase():
        except ValueError:
           print("could no longer access database status, exiting")
 
+    if(iterationCount < iterationMax):
+        print("\nWaited %s seconds to remove old instance" % (iterationCount*timerBreak))
+    else:
+        print("\nTimed out waiting for old instance to be removed, something probably went wrong, waited for maximum of %s seconds" % (iterationMax*timerBreak))
+        return
+
     conn.modify_dbinstance(dbInstanceName, vpc_security_groups=[secGroupId]);
 
     return None
+
+# def overrideLatestSnapshot():
+#     "Will implement an override to use a specific snapshot instead of the most recently available snapshot"
+#
+#     snapshots = getSnapshots()
+#     if snapshots is None:
+#         print("There are no snapshots to restore from, note name must start with " + dbSnapshotBase)
+#         return
+
 
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--remove', action='store_true', help='takes a snapshot and removes the specified database instance')
 group.add_argument('--restore', action='store_true', help='restore the database from the latest snaphot taken')
 group.add_argument('--status', action='store_true', help='status for the specified database snapshot')
-group.add_argument('--get_snap', action='store_true', help='lists all available snapshots for the specified database instance')
-group.add_argument('--del_snap', action='store_true', help='deletes snapshots at end of list if list greater than 10')
+group.add_argument('--snapshots', action='store_true', help='lists all available snapshots for the specified database instance')
 
 parser.add_argument('-r','--region', help='connect to the specified region', default='us-east-1', choices=['us-east-1','us-west-2'])
-parser.add_argument('-o','--override', help='Specify a snapshot to use for a database restore')
+parser.add_argument('-o','--override', help='allows user to specify snapshot to use for a database restore')
 
 args = parser.parse_args()
 
@@ -141,10 +139,9 @@ dbInstanceName = 'tc-pcf-bosh'
 dbSnapshotBase = 'tc-pcf-bosh-snapshot'
 today = datetime.datetime.now()
 
-print("Connecting to AWS Region [%s] " % args.region)
+print("Connecting to AWS Region [%s] \n" % args.region)
 # Create a connection to the service
 conn = boto.rds.connect_to_region(args.region)
-conn2 = boto.rds2.connect_to_region(args.region)
 dbInstances = conn.get_all_dbinstances()
 dbSnapshots = conn.get_all_dbsnapshots(instance_id=dbInstanceName)
 
@@ -159,13 +156,16 @@ elif args.restore:
     print("\nYour AWS RDS database is now restored!")
 
 elif args.override:
-    print("not finished yet ...")
+    print("Below is the available list of snapshots to use for a database restore\n")
 
-elif args.get_snap:
+    if args.override not in printSnapshots():
+        print("\nThe snapshot entered for the override is not an available option! Check the above list for available snapshots to use!")
+    else:
+        print("\nThe snapshot that will be used for the override: [%s] " % args.override)
+    # overrideLatestSnapshot()
+
+elif args.snapshots:
     printSnapshots()
-
-elif args.del_snap:
-    deleteOldSnapshots()
 
 else:
     getStatusOfDatabase()
