@@ -19,6 +19,8 @@ def getSnapshots():
     return snapshotList
 
 def printSnapshots():
+    "Prints the list provided from getSnapshots()"
+
     snapshots = getSnapshots()
     if snapshots is None:
         print("Couldn't find any snapshots for instance " + dbInstanceName + ", note name must start with " + dbSnapshotBase)
@@ -31,14 +33,18 @@ def printSnapshots():
 def getStatusOfDatabase():
     "Gets the status of the specified available database"
 
-    if dbInstances is not None:
-        print("[%s] has status of [%s] " % (dbInstances[0], dbInstances[0].status))
-    else:
-        print("There is currently no available RDS database running. Please check the AWS Console if this is a problem!")
+    if dbInstances == []:
+        print("There is currently no available RDS database running. \nPlease check the AWS Console if this is a problem!")
+        return
+
+    for dbInst in dbInstances:
+        print("[%s] has status of [%s] " % (dbInstances[dbInst], dbInstances[dbInst].status))
 
     return None
 
 def removeDatabase():
+    "Removes the AWS RDS database instance after first taking a snapshot"
+
     snapshotName = dbSnapshotBase + '-' + today.strftime('%Y%m%d-%H%M')
     print("Backing database up to snapshot name: %s " % snapshotName)
 
@@ -75,6 +81,7 @@ def removeDatabase():
     return None
 
 def restoreDatabase():
+    "Restores a database from the latest snapshot"
 
     snapshots = getSnapshots()
     if snapshots is None:
@@ -114,24 +121,80 @@ def restoreDatabase():
 
     return None
 
-# def overrideLatestSnapshot():
-#     "Will implement an override to use a specific snapshot instead of the most recently available snapshot"
-#
-#     snapshots = getSnapshots()
-#     if snapshots is None:
-#         print("There are no snapshots to restore from, note name must start with " + dbSnapshotBase)
-#         return
+def overrideLatestSnapshot():
+    "Will implement an override to use a specific snapshot instead of the most recently available snapshot"
+
+    snapshots = getSnapshots()
+    if snapshots is None:
+        print("There are no snapshots to restore from, note name must start with " + dbSnapshotBase)
+        return
+
+    if args.override not in snapshots:
+        print("The snapshot entered for the override is not an available snapshot! \nAvailable snapshots are: \n")
+        for snap in snapshots:
+            print(snap)
+        return
+
+    print("The snapshot specified to use for the override is: [%s] \nWill now restore database from this snapshot!" % args.override)
+    dbClassName = 'db.m3.large'
+    secGroupId = 'sg-86020ce2'
+    secGroupName = 'tc-mysql'
+    restoredInstance = conn.restore_dbinstance_from_dbsnapshot(args.override, dbInstanceName, dbClassName, multi_az=True, db_subnet_group_name='tc-pcf-rdsgroup')
+
+    iterationCount = 0
+    iterationMax = 60
+    timerBreak = 30
+    restoredStatus = 'restoring'
+
+    while ((iterationCount < iterationMax) and (restoredStatus != 'available')):
+       time.sleep(timerBreak)
+       iterationCount += 1
+       try:
+          restoredInstance.update(validate=True)
+          restoredStatus = restoredInstance.status
+          print ("restored db status: " + restoredStatus)
+       except ValueError:
+          print("could no longer access database status, exiting")
+
+    if(iterationCount < iterationMax):
+        print("\nWaited %s seconds to remove old instance" % (iterationCount*timerBreak))
+    else:
+        print("\nTimed out waiting for old instance to be removed, something probably went wrong, waited for maximum of %s seconds" % (iterationMax*timerBreak))
+        return
+
+    conn.modify_dbinstance(dbInstanceName, vpc_security_groups=[secGroupId]);
+
+    return None
+
+def delSnapshots():
+    "Deletes snapshots from snapshotList when list is greater than 10"
+
+    snapshots = getSnapshots()
+
+    # count = 0
+    # maxLength = 10
+    # if len(snapshots) < maxLength:
+    #     print("Currently there are %s snapshots " % (len(snapshots)))
+    #     print("Will quit as the snapshot list is not over 10 snapshots!")
+    #
+    # print("Will delete old snapshots until there are 10 snapshots in the list!")
+    #
+    # lastSnap = snapshots[-1]
+    # print(lastSnap)
+    print("The oldest snapshot in the list is %s\n " % (snapshots[-1]))
 
 
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--remove', action='store_true', help='takes a snapshot and removes the specified database instance')
-group.add_argument('--restore', action='store_true', help='restore the database from the latest snaphot taken')
+group.add_argument('--restore', action='store_true', help='restore the database from the latest snapshot taken')
 group.add_argument('--status', action='store_true', help='status for the specified database snapshot')
 group.add_argument('--snapshots', action='store_true', help='lists all available snapshots for the specified database instance')
 
+group.add_argument('--del_snapshots', action='store_true', help='delete snapshots from end of list if list greater than 10')
+group.add_argument('-o','--override', help='allows user to specify snapshot to use for a database restore')
+
 parser.add_argument('-r','--region', help='connect to the specified region', default='us-east-1', choices=['us-east-1','us-west-2'])
-parser.add_argument('-o','--override', help='allows user to specify snapshot to use for a database restore')
 
 args = parser.parse_args()
 
@@ -156,16 +219,13 @@ elif args.restore:
     print("\nYour AWS RDS database is now restored!")
 
 elif args.override:
-    print("Below is the available list of snapshots to use for a database restore\n")
-
-    if args.override not in printSnapshots():
-        print("\nThe snapshot entered for the override is not an available option! Check the above list for available snapshots to use!")
-    else:
-        print("\nThe snapshot that will be used for the override: [%s] " % args.override)
-    # overrideLatestSnapshot()
+    overrideLatestSnapshot()
 
 elif args.snapshots:
     printSnapshots()
+
+elif args.del_snapshots:
+    delSnapshots()
 
 else:
     getStatusOfDatabase()
